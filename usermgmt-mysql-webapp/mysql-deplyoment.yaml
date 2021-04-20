@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  replicas: 1
+  selector: # Pod selector label
+    matchLabels:
+      app: mysql
+  strategy: # Strategy for deployment
+    type: Recreate # Kills all pods before creating new ones during update. Default: Rolling update
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec: # Pod specifications
+      containers:
+      - name: mysql
+        image: mysql:5.6
+        env:
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql-db-password
+                key: db-password
+        ports:
+          - containerPort: 3306
+            name: mysql # name of this port
+        volumeMounts:
+          - mountPath: /var/lib/mysql
+            name: mysql-persistent-storage
+          - mountPath: /docker-entrypoint-initdb.d #refer to https://hub.docker.com/_/mysql Refer Initializing a fresh instance
+            name: usermanagement-dbcreation-script
+        resources:
+          limits:
+            memory: 1000Mi
+            cpu: 1000m # CPU limits are in millicores
+          requests:
+            memory: 128Mi
+            cpu: 400m # CPU limits are in millicores
+      volumes: # Pod spec level resource; These volumes need to be used in the container template above
+        - name: mysql-persistent-storage
+          persistentVolumeClaim:
+            claimName: azure-managed-disk-pvc # PVC with this name needs to be created with another yaml resource
+        - name: usermanagement-dbcreation-script
+          configMap:
+            name: usermanagement-dbcreation-script # a config map with this name needs to be created with another yaml resource
